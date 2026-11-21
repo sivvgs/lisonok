@@ -97,21 +97,23 @@ function setFox(m){var b=document.getElementById("foxbox");b.innerHTML=foxSVG(m)
 function togV(b){voice=!voice;b.textContent=voice?"🔊":"🔇"}
 function head(q){var h='<div class="hd"><span class="sc">⭐ <span id="sc">'+score+'</span></span><span><button class="snd" onclick="togV(this)">'+(voice?'🔊':'🔇')+'</button><button class="snd" onclick="togM(this)">'+(mus?'🎵':'🔕')+'</button></span></div><div class="stages">';BLOCKS.forEach(function(b,i){var w=b.n.split(" ");h+='<div class="st'+(i<bi?' done':i===bi?' cur':'')+'"><b>'+w[0]+'</b>'+w.slice(1).join(" ")+'</div>'});h+='</div><div class="dots">';BLOCKS[bi].q.forEach(function(_,i){h+='<i class="'+(i<qi?'on':i===qi&&q?'now':'')+'"></i>'});return h+'</div>'}
 function fox(msg){return '<div class="fox-wrap"><div id="foxbox">'+foxSVG("idle")+'</div><div id="bubble" class="card">'+msg+'</div></div>'}
-var started=false,mus=true,mEl,wEl,lEl,ready=false;
+var AC,started=false,mus=true,mEl,wEl,lEl,ready=false;
 var LEAD=[76,0,79,76,74,0,72,74,76,0,79,81,79,0,76,0,74,0,77,74,72,0,74,76,79,0,76,74,72,0,0,0],BASSR=[48,45,41,43];
 function m(n){return 440*Math.pow(2,(n-69)/12)}
 function wavURL(d,sr){var n=d.length,b=new ArrayBuffer(44+n*2),v=new DataView(b);function w(o,t){for(var i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))}w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);for(var i=0;i<n;i++){v.setInt16(44+i*2,Math.max(-1,Math.min(1,d[i]))*32767,true)}return URL.createObjectURL(new Blob([b],{type:"audio/wav"}))}
-function synth(nt,dur){var sr=22050,n=sr*dur|0,d=new Float32Array(n);nt.forEach(function(o){var s=o.t*sr|0,l=o.d*sr|0;for(var i=0;i<l&&s+i<n;i++){var ph=(i/sr*o.f)%1,x=o.w===0?(ph<.5?1:-1):o.w===1?4*Math.abs(ph-.5)-1:o.w===2?Math.random()*2-1:2*ph-1;d[s+i]+=o.v*Math.min(1,i/200)*(1-i/l)*x}});var pk=0,k;for(k=0;k<n;k++)pk=Math.max(pk,Math.abs(d[k]));if(pk>0)for(k=0;k<n;k++)d[k]*=.85/pk;return wavURL(d,sr)}
-function initAudio(){if(ready)return;ready=true;try{
+function synth(nt,dur,raw){var sr=22050,n=sr*dur|0,d=new Float32Array(n);nt.forEach(function(o){var s=o.t*sr|0,l=o.d*sr|0;for(var i=0;i<l&&s+i<n;i++){var ph=(i/sr*o.f)%1,x=o.w===0?(ph<.5?1:-1):o.w===1?4*Math.abs(ph-.5)-1:o.w===2?Math.random()*2-1:2*ph-1;d[s+i]+=o.v*Math.min(1,i/200)*(1-i/l)*x}});var pk=0,k;for(k=0;k<n;k++)pk=Math.max(pk,Math.abs(d[k]));if(pk>0)for(k=0;k<n;k++)d[k]*=.85/pk;return raw?d:wavURL(d,sr)}
+function bufOf(d){var b=AC.createBuffer(1,d.length,22050);b.getChannelData(0).set(d);return b}
+function initAudio(){if(ready)return;ready=true;try{AC=new(window.AudioContext||window.webkitAudioContext)();
  var nt=[];LEAD.forEach(function(n,s){var t=s*.25;if(n)nt.push({f:m(n),t:t,d:.22,v:.16,w:0});if(s%2===0){var r=BASSR[s>>3];nt.push({f:m(s%4===0?r:r+7),t:t,d:.3,v:.32,w:1})}else nt.push({f:0,t:t,d:.04,v:.1,w:2})});
  mEl=new Audio(synth(nt,8));mEl.loop=true;mEl.volume=.9;
  var wn=[];[72,76,79,84,88].forEach(function(n,i){wn.push({f:m(n),t:i*.09,d:.2,v:.3,w:0})});wn.push({f:m(91),t:.5,d:.45,v:.3,w:0});
- wEl=new Audio(synth(wn,1.1));wEl.volume=.8;
+ wEl=bufOf(synth(wn,1.1,1));
  var ln=[];[67,64,61,57].forEach(function(n,i){ln.push({f:m(n),t:i*.2,d:.3,v:.3,w:3})});
- lEl=new Audio(synth(ln,1.2));lEl.volume=.8}catch(e){}}
-function musicOn(){if(mEl&&mus){started=true;mEl.play().catch(function(){})}}
+ lEl=bufOf(synth(ln,1.2,1))}catch(e){}}
+function musicOn(){if(AC&&AC.state!=="running")AC.resume();if(mEl&&mus){started=true;mEl.play().catch(function(){})}}
 function togM(b){mus=!mus;b.textContent=mus?'🎵':'🔕';if(mus){initAudio();musicOn()}else if(mEl)mEl.pause()}
-function sfx(e){if(!e)return;try{e.currentTime=0;e.play().catch(function(){})}catch(x){}}
+function sfx(b){if(!b||!AC)return;try{if(AC.state!=="running")AC.resume();var s=AC.createBufferSource(),g=AC.createGain();g.gain.value=.8;s.buffer=b;s.connect(g);g.connect(AC.destination);s.start()}catch(x){}}
+["touchend","click"].forEach(function(ev){document.addEventListener(ev,function(){if(mEl&&mus&&started&&mEl.paused)musicOn()})});
 function win(){sfx(wEl)}
 function lose(){sfx(lEl)}
 setInterval(function(){if(mEl&&mus&&started&&mEl.paused&&!document.hidden)musicOn()},1500);
