@@ -6,7 +6,7 @@
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#fdf1dc;--bg2:#f9e7c9;--card:#fffaf0;--ink:#5a3a24;--line:#5a3a24;--accent:#f58a2e;--ok:#8fe0a0;--okl:#2f8f4a;--bad:#ffb9ad;--badl:#d0594a}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a2230;--bg2:#30283a;--card:#3d3347;--ink:#ffeedd;--line:#140e1a;--ok:#4fae68;--bad:#b9574c}}
 *{touch-action:manipulation;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;min-height:100%;font-family:"Nunito","Trebuchet MS","Segoe UI",system-ui,sans-serif;font-weight:700;color:var(--ink);background:conic-gradient(var(--bg2) 25%,var(--bg) 0 50%,var(--bg2) 0 75%,var(--bg) 0) 0 0/36px 36px}
+html,body{margin:0;min-height:100%;font-family:"Nunito","Trebuchet MS","Segoe UI",system-ui,sans-serif;font-weight:700;color:var(--ink);background:var(--bg)}
 #app{max-width:480px;margin:0 auto;padding:12px 14px 28px;text-align:center}
 .card{background:var(--card);border:4px solid var(--line);border-radius:12px;box-shadow:0 6px 0 var(--line)}
 .top{display:flex;justify-content:space-between;align-items:center;font-size:18px;font-weight:700}
@@ -28,11 +28,11 @@ html,body{margin:0;min-height:100%;font-family:"Nunito","Trebuchet MS","Segoe UI
 .loadbar i{display:block;height:100%;background:var(--accent);animation:ld 2.6s linear forwards}
 @keyframes ld{from{width:0}to{width:100%}}
 .fox-wrap{display:flex;align-items:center;gap:10px;justify-content:center;margin:8px 0 12px;min-height:96px}
-#foxbox{width:100px;flex:none;animation:idle 2.4s steps(4) infinite}
-#foxbox svg{width:100%;image-rendering:pixelated;display:block;filter:drop-shadow(0 4px 0 rgba(0,0,0,.18))}
+#foxbox{will-change:transform;width:100px;flex:none;animation:idle 2.4s steps(4) infinite}
+#foxbox svg{width:100%;image-rendering:pixelated;display:block;}
 #foxbox.happy{animation:jump .7s}
 #foxbox.sad{animation:tilt .9s}
-.eyes{transform-box:fill-box;transform-origin:center;animation:blink 4s infinite}
+.eyes{transform-box:fill-box;transform-origin:center}#foxbox.bl .eyes{transform:scaleY(.1)}
 @keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
 @keyframes idle{50%{transform:translateY(-5px)}}
 @keyframes jump{30%{transform:translateY(-26px) rotate(-6deg)}60%{transform:translateY(0)}80%{transform:translateY(-10px) rotate(6deg)}}
@@ -102,10 +102,14 @@ var LEAD=[76,0,79,76,74,0,72,74,76,0,79,81,79,0,76,0,74,0,77,74,72,0,74,76,79,0,
 function m(n){return 440*Math.pow(2,(n-69)/12)}
 function wavURL(d,sr){var n=d.length,b=new ArrayBuffer(44+n*2),v=new DataView(b);function w(o,t){for(var i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))}w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);for(var i=0;i<n;i++){v.setInt16(44+i*2,Math.max(-1,Math.min(1,d[i]))*32767,true)}return URL.createObjectURL(new Blob([b],{type:"audio/wav"}))}
 function synth(nt,dur,raw){var sr=22050,n=sr*dur|0,d=new Float32Array(n);nt.forEach(function(o){var s=o.t*sr|0,l=o.d*sr|0;for(var i=0;i<l&&s+i<n;i++){var ph=(i/sr*o.f)%1,x=o.w===0?(ph<.5?1:-1):o.w===1?4*Math.abs(ph-.5)-1:o.w===2?Math.random()*2-1:2*ph-1;d[s+i]+=o.v*Math.min(1,i/200)*(1-i/l)*x}});var pk=0,k;for(k=0;k<n;k++)pk=Math.max(pk,Math.abs(d[k]));if(pk>0)for(k=0;k<n;k++)d[k]*=.85/pk;return raw?d:wavURL(d,sr)}
+function prepM(){if(mEl)return;
+ var nt=[];LEAD.forEach(function(n,s){var t=s*.25;if(n)nt.push({f:m(n),t:t,d:.22,v:.16,w:0});if(s%2===0){var r=BASSR[s>>3];nt.push({f:m(s%4===0?r:r+7),t:t,d:.3,v:.32,w:1})}else nt.push({f:0,t:t,d:.04,v:.1,w:2})});
+ mEl=new Audio(synth(nt,8));mEl.loop=true;mEl.volume=.9;}
+setTimeout(prepM,500);
+setInterval(function(){var f=document.getElementById("foxbox");if(f){f.classList.add("bl");setTimeout(function(){f.classList.remove("bl")},140)}},3800);
 function bufOf(d){var b=AC.createBuffer(1,d.length,22050);b.getChannelData(0).set(d);return b}
 function initAudio(){if(ready)return;ready=true;try{AC=new(window.AudioContext||window.webkitAudioContext)();
- var nt=[];LEAD.forEach(function(n,s){var t=s*.25;if(n)nt.push({f:m(n),t:t,d:.22,v:.16,w:0});if(s%2===0){var r=BASSR[s>>3];nt.push({f:m(s%4===0?r:r+7),t:t,d:.3,v:.32,w:1})}else nt.push({f:0,t:t,d:.04,v:.1,w:2})});
- mEl=new Audio(synth(nt,8));mEl.loop=true;mEl.volume=.9;
+ prepM();
  var wn=[];[72,76,79,84,88].forEach(function(n,i){wn.push({f:m(n),t:i*.09,d:.2,v:.3,w:0})});wn.push({f:m(91),t:.5,d:.45,v:.3,w:0});
  wEl=bufOf(synth(wn,1.1,1));
  var ln=[];[67,64,61,57].forEach(function(n,i){ln.push({f:m(n),t:i*.2,d:.3,v:.3,w:3})});
